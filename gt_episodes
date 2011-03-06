@@ -5,6 +5,9 @@ require 'open-uri'
 require 'nokogiri'
 require 'time'
 
+# TODO:
+# Clean all of this up. Fix bugs.
+
 # USAGE:
 # Put ids of IMDB shows here:
 movie_ids = %w(tt0773262 tt0121955 tt0182576 tt0460649 tt0903747 tt0412142)

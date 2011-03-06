@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+
+# Open RP Song
+#
+# Opens currently playing Radio Paradise song in the default browser.
+#
+# Example usage:
+# - download to ~/scripts
+# - chmod +x open_rp_song.rb
+# - in QuickSilver add a hotkey trigger to run this file (i used ctrl+cmd+r)
+
+require 'open-uri'
+page = open('http://www.radioparadise.com/content.php?name=Playlist').read
+song_id = page[/song_id=(\d+)/, 1]
+song_keywords = page.match(/#{song_id}">([^<]+)<br>([^<]+)</)[1,2].join(' ').downcase.gsub(/[^\d\w\s]/, '').squeeze(' ')
+
+system "open", "http://www.radioparadise.com/content.php?name=songinfo&song_id=#{song_id}"
+system "open", "http://binsearch.info/?q=#{song_keywords}&max=250&adv_age="

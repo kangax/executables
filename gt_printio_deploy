@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+# Intended for use with geektool.
+
+require 'rubygems'
+require "#{File.expand_path(File.dirname(__FILE__))}/support/helpers"
+
+options_for __FILE__, :dir => { :required => true }
+
+puts `cd #{@dir} && echo \`git log staging --max-count=1 --format=format:"printio was\\n staged %cr\\n"\` \`git log production --max-count=1 --format=format:"deployed %cr"\``

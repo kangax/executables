@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # Outputs twitter followers count, stack overflow reputation, and feedburner subscribers.
-# Intended for geektool.
+# Intended for use with geektool.
 
 require 'rubygems'
 require "#{File.expand_path(File.dirname(__FILE__))}/support/helpers"

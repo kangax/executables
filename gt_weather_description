@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+# Intended for use with geektool.
+
+require 'rubygems'
+require "#{File.expand_path(File.dirname(__FILE__))}/support/helpers"
+
+options_for __FILE__, :zip => { :required => true, :text => 'Weather location zip code.'}
+
+puts `curl -s "http://www.wunderground.com/cgi-bin/findweather/getForecast?query=#{@zip}" | awk '/Today is/ || /Tomorrow is/' | textutil -convert txt -stdin -stdout -format html | sed -e 's/is forecast to/should/' -e 's/\\.//' | tr '[:upper:]' '[:lower:]'`.strip

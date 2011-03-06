@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+# Intended for use with geektool.
+
+require 'rubygems'
+require "#{File.expand_path(File.dirname(__FILE__))}/support/helpers"
+
+options_for __FILE__, :code => { :required => true, :text => 'Weather station code.'}
+
+puts `curl --silent "http://xml.weather.yahoo.com/forecastrss?p=#{@code}&u=f" | grep -E '(Current Conditions:|F<BR)' | sed -e 's/Current Conditions://' -e 's/<br \\/>//' -e 's/<b>//' -e 's/<\\/b>//' -e 's/<BR \\/>//' -e 's///' -e 's/<\\/description>//'`.strip

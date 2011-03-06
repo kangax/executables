@@ -1,0 +1,20 @@
+#!/usr/bin/env ruby
+# Intended for use with geektool.
+
+require 'rubygems'
+require "#{File.expand_path(File.dirname(__FILE__))}/support/helpers"
+
+
+options_for __FILE__, :author   => { :required => true,
+                                     :text => 'Name of author whose commits to count.'},
+                      :projects => { :required => true, :type => Array,
+                                     :text => 'List of paths to projects in which to count commits.'}
+
+entries = @projects.map do |path|
+  "  #{`cd #{path} && git log --all --since=yesterday --until=today --pretty=oneline --author=#{@author} | wc -l`.strip} in #{File.basename(path)}"
+end
+
+puts <<-STATS
+my commits since yesterday
+#{entries.join("\n")}
+STATS

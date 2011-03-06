@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Intended for use with geektool.
+
+date '+%B %d'

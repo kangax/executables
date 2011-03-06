@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+# Intended for use with geektool.
+
 require 'rubygems'
 require "#{File.expand_path(File.dirname(__FILE__))}/support/helpers"
 require 'yaml'

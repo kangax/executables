@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+# Intended for use with geektool.
+
+require 'rubygems'
+require "#{File.expand_path(File.dirname(__FILE__))}/support/helpers"
+
+options_for __FILE__, :user => { :required => true, :text => 'Gmail username.'},
+                      :pass => { :required => true, :text => 'Gmail password.'}
+
+count = `curl --silent https://#{@user}:#{@pass}@mail.google.com/mail/feed/atom/inbox | grep fullcount | grep -o '[0-9]\\+'`.strip
+puts "#{count} emails"
