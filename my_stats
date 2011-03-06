@@ -1,0 +1,33 @@
+#!/usr/bin/env ruby
+
+# Outputs twitter followers count, stack overflow reputation, and feedburner subscribers.
+# Intended for geektool.
+
+require 'rubygems'
+require "#{File.expand_path(File.dirname(__FILE__))}/support/helpers"
+
+begin
+  require 'json'
+rescue LoadError
+  puts 'Error: json gem not found. Please [sudo] gem install json.'
+  exit(1)
+end
+
+options_for __FILE__, :twitter_user          => { :required => true, :text => 'Your twitter username' },
+
+                      :stack_overflow_userid => { :required => true, :type => Integer,
+                                                  :text => 'Your numeric StackOverflow user id' },
+
+                      :feedburner_uri        => { :required => true,
+                                                  :text => 'The URI title of your FeedBurner account' }
+
+tf = `curl -s "http://api.twitter.com/1/users/show/#{@twitter_user}.xml" | sed -n -e 's/.*<followers_count>\\(.*\\)<\\/followers_count>.*/\\1/p'`.to_i
+so = JSON.parse(`curl -s "http://stackoverflow.com/users/flair/#{@stack_overflow_userid}.json"`)['reputation'].gsub(/\D/, '').to_i
+fb = `curl -s "https://feedburner.google.com/api/awareness/1.0/GetFeedData?uri=#{@feedburner_uri}"`[/circulation="(\d+)"/, 1].to_i
+
+puts <<-STATS
+personal
+ #{tf} followers
+ #{so} reputation
+ #{fb} subscribers
+STATS

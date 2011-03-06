@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+
+# Outputs latest milestone tickets from a Lightohuse project.
+# Intended for geektool.
+
+require 'rubygems'
+require "#{File.expand_path(File.dirname(__FILE__))}/support/helpers"
+
+begin
+  require 'lighthouse-api'
+rescue LoadError
+  puts 'Error: lighthouse-api gem not found. Please [sudo] gem install ligthouse-api.'
+  exit(1)
+end
+
+options_for __FILE__, :token   => { :required => true, :text => 'Lighthouse token for authentication' },
+                      :account => { :required => true, :text => 'Lighthouse account name (usually subdomain)' },
+                      :project => { :required => true, :text => 'Numeric project id (e.g. 42)', :type => Integer }
+
+
+Lighthouse.token = @token
+Lighthouse.account = @account
+
+tickets = Lighthouse::Ticket.find :all, :params => {:project_id => @project, :q => "responsible:me state:open milestone:next sort:priority"}
+
+tickets.each do |ticket|
+  words = ticket.title.split(/\s+/) 
+  words[0].upcase!
+  puts "#{ticket.id} #{words.join(' ')}"
+end

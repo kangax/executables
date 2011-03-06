@@ -1,0 +1,4 @@
+#!/usr/bin/env sh 
+source ~/.rvm/scripts/rvm 
+cd . 
+exec ruby "$@"

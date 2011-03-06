@@ -1,0 +1,40 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require "#{File.expand_path(File.dirname(__FILE__))}/support/helpers"
+require 'yaml'
+
+options_for __FILE__, :uri           => { :required => true },
+                      :key           => { :required => true },
+                      :profit_factor => { :required => true, :type => Float },
+                      :ga_user       => { :required => true },
+                      :ga_pass       => { :required => true },
+                      :ga_code       => { :required => true, :type => Integer }
+
+stats = YAML.load(`curl -s "#{@uri}?key=#{@key}"`)
+amount = stats['orders_total'].to_f / 100.0
+
+google_conv = if amount > 0
+  `curl -s "http://www.google.com/finance/converter?a=#{amount}&from=rub&to=usd" |  sed '/res/!d;s/<[^>]*>//g'`
+else
+  "0 RUB = 0 USD"
+end
+
+orders_total_usd = google_conv.split('=')[1].strip[/[\d\.]+/].to_f
+orders_total_usd_str = '$%.2f' % orders_total_usd
+approx_earned = '$%.2f' % (orders_total_usd * @profit_factor)
+
+analytics_auth = `curl -s https://www.google.com/accounts/ClientLogin -s -d Email="#{@ga_user}" -d Passwd="#{@ga_pass}" -d accountType=GOOGLE -d source=curl-dataFeed-v2 -d service=analytics | awk "/Auth=.*/"`
+analytics_uri = "\"https://www.google.com/analytics/feeds/data?ids=ga:#{@ga_code}&start-date=#{Time.now.strftime('%Y-%m-%d')}&end-date=#{Time.now.strftime('%Y-%m-%d')}&metrics=ga:visits&prettyprint=true\""
+analytics_results = `curl #{analytics_uri} --silent --header "Authorization: GoogleLogin #{analytics_auth}" --header "GData-Version: 2"`
+visits = analytics_results.grep(/ga:visits/)[1][/value='(\d+)'/, 1].to_i
+
+puts <<-STATS
+today on printio
+ #{visits} visits
+ #{stats['products_count']} items created
+ #{stats['published_products_count']} items published
+ #{stats['unmoderated_products_count']} items unmoderated
+ #{stats['orders_count']} orders placed worth #{orders_total_usd_str}
+ ~#{approx_earned} earned
+STATS

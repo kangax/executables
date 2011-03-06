@@ -1,0 +1,151 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'open-uri'
+require 'nokogiri'
+require 'time'
+
+# USAGE:
+# Put ids of IMDB shows here:
+movie_ids = %w(tt0773262 tt0121955 tt0182576 tt0460649 tt0903747 tt0412142)
+
+# In order to use export .ics feature install icalendar gem:
+#   gem install icalendar
+
+# puts "Fetching...\n\n"
+
+last_episodes = []
+next_episodes = []
+
+movie_ids.each do |movie_id|
+  doc = Nokogiri::HTML(open("http://www.imdb.com/title/#{movie_id}/episodes"))
+
+  title = doc.xpath("//a[@href='/title/#{movie_id}/']").map(&:text).last.gsub('"', '')
+
+  date_episode_sched_triplets = []
+  doc.xpath('//td').children.each do |child|
+    child.xpath('strong').reject{|t| t.text.strip == ''}.each do |strong|
+      sched = nil
+      if sched_section = strong.ancestors('td').xpath('table').xpath('tr').first
+        sched_row = sched_section.xpath('td')
+        sched = { :date => sched_row[0].text,
+                  :time => sched_row[1].text,
+                  :chan => sched_row[2].text }
+      end
+
+      date_episode_sched_triplets << [strong.text, strong.ancestors('td').xpath('h3').text, sched]
+    end
+  end
+
+  episodes = date_episode_sched_triplets.map do |date, episode, sched|
+    episode[/Season\s+(\d+)\W+Episode\s+(\d+)/i]
+    season = $1
+    episode_number = $2
+
+    title_chunks = episode.split(':')
+    title_chunks.shift
+    episode_title = title_chunks.join(':').strip
+
+    { :time => (Time.parse(date) rescue next),
+      :code => (season && episode_number) ? "s#{season.rjust(2, '0')}e#{episode_number.rjust(2, '0')}" : 'missing',
+      :channel => sched ? sched[:chan].strip : 'unknown',
+      :airtime => (Time.parse("#{sched[:date]} #{sched[:time]}") rescue nil),
+      :title => episode_title,
+      :season => season && season.to_i,
+      :episode => episode && episode_number.to_i }
+  end.compact
+
+  
+  next_episode = episodes.select{|e| e[:time] > Time.now }.min{|a, b| a[:time] <=> b[:time]}
+  last_episode = episodes.select{|e| e[:time] < Time.now }.max{|a, b| a[:time] <=> b[:time]}
+
+  if last_episode
+    when_last_episode = if last_episode[:airtime]
+      last_episode[:airtime].strftime('%A, %m/%d/%y %I:%M %p')
+    else
+      last_episode[:time].strftime('%A, %m/%d/%y')
+    end
+
+    last_episodes << [last_episode, when_last_episode, title]
+  end
+
+  if next_episode
+    when_next_episode = if next_episode[:airtime]
+      next_episode[:airtime].strftime('%A, %m/%d/%y %I:%M %p')
+    else 
+      next_episode[:time].strftime('%A, %m/%d/%y')
+    end
+
+    next_episodes << [next_episode, when_next_episode, title]
+  end
+end
+
+next_episodes.sort!{|a, b| a.first[:time] <=> b.first[:time]}
+
+unless last_episodes.empty?
+  puts 'last episodes'
+  last_episodes.each do |last_episode, when_last_episode, title|
+    last_episode[:code] = (last_episode[:code] == 'missing' ? '' : "#{last_episode[:code]} ")
+    puts ' ' + title.split(/\W+/).map{|w| w[0].chr.upcase}.join + ' ' + last_episode[:code] + last_episode[:time].strftime('%m/%d/%y')
+  end
+end
+
+puts "\n"
+
+unless next_episodes.empty?
+  puts 'next episodes'
+  next_episodes.each do |next_episode, when_next_episode, title|
+    next_episode[:code] = (next_episode[:code] == 'missing' ? '' : "#{next_episode[:code]} ")
+    puts ' ' + title.split(/\W+/).map{|w| w[0].chr.upcase}.join + ' ' + next_episode[:code] + next_episode[:time].strftime('%m/%d/%y')
+    # puts "#{title}: #{when_next_episode} (channel: #{next_episode[:channel]}) - #{next_episode[:title]} (#{next_episode[:code]})"
+  end
+end
+
+# ical = true
+# begin
+#   require 'icalendar'
+#   require 'date'
+# rescue LoadError
+#   ical = false
+# end
+# 
+# if ical
+#   puts "\nThis will create an ics file which can be imported into iCal. 
+# It will create 15min message alarms for episodes where airtime could be determined, 
+# and 1-day message alarms for episodes where only general date was available. If you want 
+# to import next_episodes.ics, it's recommended to use a separate calendar, just in case."
+# 
+#   print "Want to create next_episodes.ics in this dir? (y) "
+#   answer = $stdin.gets.chop
+#   
+#   if answer == 'y'
+#     include Icalendar
+# 
+#     cal = Calendar.new
+#     next_episodes.each do |next_episode, when_next_episode, title|
+#       cal.event do
+#         dtstart DateTime.parse((next_episode[:airtime] || next_episode[:time]).to_s)
+#         summary "#{title.split(/\W+/).map{|w| w[0].chr.upcase}.join} #{next_episode[:code]}"
+#         desc = "#{title}: #{next_episode[:title]} (#{next_episode[:code]})"
+# 
+#         if next_episode[:channel]
+#           desc << " on channel #{next_episode[:channel]}"
+#         end
+# 
+#         description desc
+# 
+#         alarm do
+#           if next_episode[:airtime]
+#             trigger "-PT15M"
+#             summary "New episode of '#{title}' starts on #{next_episode[:channel]} in 15 minutes!"
+#           else
+#             trigger "-P1DT0H0M0S"
+#             summary "New episode of '#{title}' tomorrow!"
+#           end
+#         end
+#       end
+#     end
+# 
+#     File.open('next_episodes.ics', 'w') {|f| f.write cal.to_ical}
+#   end
+# end
