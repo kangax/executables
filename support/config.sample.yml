@@ -1,0 +1,34 @@
+gt_lh:
+  token:
+  account:
+  project:
+
+my_stats:
+  twitter_user:
+  stack_overflow_userid:
+  feedburner_uri:
+
+printio_stats:
+  uri:
+  key:
+  profit_factor:
+  ga_user:
+  ga_pass:
+  ga_code:
+
+gt_printio_deploy:
+  dir:
+
+gt_commits_count:
+  author:
+  projects:
+
+gt_gmail_count:
+  user:
+  pass:
+
+gt_weather_current:
+  code: USNY0158
+
+gt_weather_description:
+  zip: 11224
