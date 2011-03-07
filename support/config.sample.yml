@@ -3,12 +3,12 @@ gt_lh:
   account:
   project:
 
-my_stats:
+gt_my_stats:
   twitter_user:
   stack_overflow_userid:
   feedburner_uri:
 
-printio_stats:
+gt_printio_stats:
   uri:
   key:
   profit_factor:
