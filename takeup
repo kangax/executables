@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-require "#{File.expand_path(File.dirname(__FILE__))}/support/helpers"
+require 'yaml'
 
 use_color    = true
 project_root = Dir.pwd
@@ -27,15 +27,16 @@ end
 
 processes = []
 
-load_config_for File.basename(__FILE__) do |config|
-  config[project_name].each do |process|
-    pid_file = interpolator.call(process['pid_file'])
+config = YAML.load(File.read("#{support_root}/manifest.yml"))
 
-    processes << { 'name'     => process['name'],
-                   'pid_file' => pid_file,
-                   'start'    => interpolator.call(process['start'], ':pid_file' => pid_file),
-                   'stop'     => interpolator.call(process['stop'], ':pid_file' => pid_file) }
-  end
+config.each do |process|
+  pid_file = interpolator.call(process['pid_file'])
+
+  processes << { 'name'     => process['name'],
+                 'pid_file' => pid_file,
+                 'start'    => interpolator.call(process['start'], ':pid_file' => pid_file),
+                 'stop'     => interpolator.call(process['stop'], ':pid_file' => pid_file),
+                 'required' => !!process['required'] }
 end
 
 def running?(process)
@@ -45,7 +46,7 @@ end
 pid_checker = lambda do
   entries = []
 
-  running = use_color ? "\e[32mon\e[0m" : 'running'
+  running = use_color ? "\e[32mon\e[0m" : 'on'
   off = use_color ? "\e[31moff\e[0m" : 'off'
 
   processes.each do |process|
@@ -61,44 +62,63 @@ end
 
 project_title = use_color ? "\e[32m#{project_name.capitalize}\e[0m" : project_name.capitalize
 skipped = use_color ? "\e[31m   - skipped\e[0m" : '   - skipped'
+projects_for_regex = processes.map{|p| p['name'] && Regexp.escape(p['name'])}.compact.join('|')
+
+start_process = lambda do |process|
+  if process['start'] && (process['pid_file'].nil? || !running?(process))
+    if process['name']
+      puts "-> Starting #{process['name']}"
+    end
+
+    system process['start']
+  elsif process['pid_file'] && running?(process)
+    puts skipped
+  end
+end
+
+stop_process = lambda do |process|
+  if process['stop'] && (process['pid_file'].nil? || running?(process))
+    if process['name']
+      puts "-> Stopping #{process['name']}"
+    end
+
+    system process['stop']
+  elsif process['pid_file'] && !running?(process)
+    puts "-> Stopping #{process['name']}"
+    puts skipped
+  end
+end
 
 case ARGV[0].to_s.strip
+
 when ''
   puts "\n#{project_title}"
-
-  processes.each do |p|
-    if p['name']
-      puts "-> Starting #{p['name']}"
-    elsif p['start']
-      puts "-> Executing #{p['start']}"
-    end
-
-    if (p['pid_file'].nil? && p['start']) || (p['pid_file'] && !running?(p))
-      system "#{p['start']}"
-    elsif p['pid_file'] && running?(p)
-      puts skipped
-    end
-  end
-
+  processes.each{ |p| start_process.call(p) }
   puts "\n"
+
+when 'minimal'
+  puts "\n#{project_title} (minimal)"
+  processes.select{ |p| p['required'] }.each{|p| start_process.call(p) }
+  puts "\n"
+
+when /^(?:#{projects_for_regex})$/
+  puts "\n#{project_title}"
+  p = processes.find{ |p| p['name'] == ARGV[0].to_s.strip }
+  start_process.call(p)
+  puts "\n"
+
 when /^(?:done|off|down|stop|enough|quit|not)$/i
   puts "\n#{project_title}"
 
-  processes.reverse.each do |p|
-    if p['name']
-      puts "-> Stopping #{p['name']}"
-    elsif p['stop']
-      puts "-> Executing #{p['start']}"
-    end
-
-    if (p['pid_file'].nil? && p['stop']) || (p['pid_file'] && running?(p))
-      system "#{p['stop']}"
-    elsif p['pid_file'] && !running?(p)
-      puts skipped
-    end
+  if ARGV[1].to_s.strip =~ /^(?:#{projects_for_regex})$/
+    p = processes.find{ |p| p['name'] == ARGV[1].to_s.strip }
+    stop_process.call(p)
+  else
+    processes.reverse.each{ |p| stop_process.call(p) }
   end
 
   puts "\n"
+
 when /^(?:status|st)$/i
   entries = pid_checker.call
   width = entries.map(&:first).max.to_s.size + 6
@@ -115,6 +135,7 @@ when /^(?:status|st)$/i
   #{statuses}
 
   STATUS
+
 else
   puts 'Error: command not recognized.'
 end
