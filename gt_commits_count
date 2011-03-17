@@ -11,7 +11,7 @@ options_for __FILE__, :author   => { :required => true,
                                      :text => 'List of paths to projects in which to count commits.'}
 
 entries = @projects.map do |path|
-  "  #{`cd #{path} && git log --all --since=yesterday --until=today --pretty=oneline --author=#{@author} | wc -l`.strip} in #{File.basename(path)}"
+  "  #{`cd #{path} && /usr/local/bin/git log --all --since=yesterday --until=today --pretty=oneline --author=#{@author} | wc -l`.strip} in #{File.basename(path)}"
 end
 
 puts <<-STATS
