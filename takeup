@@ -63,6 +63,18 @@ end
 project_title = use_color ? "\e[32m#{project_name.capitalize}\e[0m" : project_name.capitalize
 skipped = use_color ? "\e[31m   - skipped\e[0m" : '   - skipped'
 projects_for_regex = processes.map{|p| p['name'] && Regexp.escape(p['name'])}.compact.join('|')
+debug_mode = !!ARGV.delete('--debug')
+
+run_command = lambda do |command|
+  cmd = command.dup
+
+  if debug_mode
+    puts `#{cmd}`
+  else
+    cmd << '  > /dev/null 2>&1'
+    system cmd
+  end
+end
 
 start_process = lambda do |process|
   if process['start'] && (process['pid_file'].nil? || !running?(process))
@@ -70,7 +82,7 @@ start_process = lambda do |process|
       puts "-> Starting #{process['name']}"
     end
 
-    system process['start']
+    run_command.call(process['start'])
   elsif process['pid_file'] && running?(process)
     puts skipped
   end
@@ -82,7 +94,7 @@ stop_process = lambda do |process|
       puts "-> Stopping #{process['name']}"
     end
 
-    system process['stop']
+    run_command.call(process['stop'])
   elsif process['pid_file'] && !running?(process)
     puts "-> Stopping #{process['name']}"
     puts skipped
